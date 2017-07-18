@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>fastlane/snapshot</title>
+		<meta charset="UTF-8">
+		<style type="text/css">
+			* {
+				font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+				font-weight: 300;
+			}
+            html,body{
+                padding: 0;
+                margin: 0;
+            }
+            .w-body{
+                margin: 20px 30px;
+                border: 1px solid #ffffff;
+            }
+			.language {
+
+            }
+            .w-testid-header {
+                background-color: #40475a;
+                margin: 0;
+                padding: 25px 0;
+                text-indent: 10px;
+                color: #fff;
+            }
+			.deviceName {
+				display: block;
+				font-size: 30px;
+				padding-bottom: 24px;
+				padding-top: 45px;
+			}
+			.screenshot {
+				cursor: pointer;
+				border: 1px #EEE solid;
+				z-index: 0;
+			}
+			#overlay {
+				position: fixed;
+				top: 0;
+				left: 0;
+				background: rgba(0,0,0,0.8);
+				z-index: 5;
+				width: 100%;
+				height: 100%;
+				display: none;
+				cursor: zoom-out;
+				text-align: center;
+			}
+			#imageDisplay {
+				height: auto;
+				width: auto;
+				z-index: 10;
+				cursor: pointer;
+			}
+			#imageInfo {
+				background: none repeat scroll 0 0 rgba(0, 0, 0, 0.2);
+				border-radius: 5px;
+				color: white;
+				margin: 20px;
+				padding: 10px;
+				position: absolute;
+				right: 0;
+				top: 0;
+				width: 250px;
+				z-index: -1;
+			}
+			#imageInfo:hover {
+				z-index: 20;
+			}
+            .w-photo-theme{
+                position: relative;
+                padding: 0;
+                margin: 40px auto 60px;
+                width: 520px;
+            }
+			.w-image-item {
+				display: inline-block;
+				position: absolute;
+                transform-origin:center 90%;
+			}
+            .w-image-item:first-child {
+				position: relative;
+			}
+			.w-image-url {
+				width: 260px;
+				margin-top: 8px;
+			}
+			.w-image-name {
+                display: block;
+                text-align: center
+			}
+
+		</style>
+	</head>
+	<body>
+        <div class="w-body">
+    		<% divide_size_by = 5.0 %>
+    		<% max_width = 180 %>
+    		<% image_counter = 0 %>
+            <%
+                themeMapping = {
+                    "5017" => "午后时光",
+                    "8001" => "星际迷航",
+                    "8003" => "海底世界",
+                    "8005" => "宁静夏天",
+                    "8004" => "缤纷几何",
+                    "8002" => "兔兔的思念"}
+            %>
+
+    		<% @data.each do |language, content| %>
+        		<h1 class="language">当前测试语言：<%= language %></h1>
+        		<% meta = content["meta"] %>
+                <% photos = content["photos"] %>
+        		<% photos.each do |test_id, photo_obj_list| %>
+            		<h2 class="w-testid-header">测试序列：<%=test_id%>，皮肤id：<%=photo_obj_list["theme_server_id"]%>，皮肤名称：<%=themeMapping[photo_obj_list["theme_server_id"]]%></h2>
+            		<ul class="w-photo-theme">
+                        <% photo_list = photo_obj_list["list"] %>
+                        <% photoCount = photo_list.count %>
+                        <% photo_list.each_with_index do |image_obj, idx| %>
+                            <% screen_path = image_obj["url"] %>
+                            <% next if screen_path.include?"_framed.png" %>
+                            <%
+                                currentIdx = (idx-photoCount/2)*10
+                                currentLeft = 130+(idx-photoCount/2)*15
+                                image_counter += 1
+                            %>
+                			<li class="w-image-item js-preview-image" testId="<%= image_obj["file_name"] %>" style="left:<%=currentLeft%>px;transform: rotate(<%=currentIdx%>deg);">
+                				<!-- <span class="w-image-name"><%= image_obj["photo_name"] %></span> -->
+                				<img class="w-image-url" alt="<%= image_obj["photo_name"] %>" src="<%= screen_path %>" data-counter="<%= image_counter %>">
+                			</li>
+                        <% end %>
+            		</ul>
+        		<% end %>
+    		<% end %>
+    		<div id="overlay">
+    			<img id="imageDisplay" src="" alt=""/>
+    			<div id="imageInfo"></div>
+    		</div>
+        </div>
+		<script type="text/javascript">
+			var overlay = document.getElementById('overlay');
+			var imageDisplay = document.getElementById('imageDisplay');
+			var imageInfo = document.getElementById('imageInfo');
+			var screenshotLink = document.getElementsByClassName('js-preview-image');
+
+			function doClick(el) {
+				if (document.createEvent) {
+					var evObj = document.createEvent('MouseEvents', true);
+					evObj.initMouseEvent("click", false, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+					el.dispatchEvent(evObj);
+				} else if (document.createEventObject) { //IE
+					var evObj = document.createEventObject();
+					el.fireEvent('onclick', evObj);
+				}
+			}
+
+			for (index = 0; index < screenshotLink.length; ++index) {
+				screenshotLink[index].addEventListener('click', function (e) {
+					e.preventDefault();
+
+					var img = e.target;
+					if (e.target.tagName == 'LI') {
+						img = e.target.children[0];
+					}
+
+					// beautify
+					var tmpImg = new Image();
+					tmpImg.src = img.src;
+					imageDisplay.style.height = 'auto';
+					imageDisplay.style.width = 'auto';
+					if (window.innerHeight < tmpImg.height) {
+						imageDisplay.style.height = document.documentElement.clientHeight + 'px';
+					} else if (window.innerWidth < tmpImg.width) {
+						imageDisplay.style.width = document.documentElement.clientWidth;
+						+'px';
+					} else {
+						imageDisplay.style.paddingTop = parseInt((window.innerHeight - tmpImg.height) / 2) + 'px';
+					}
+
+					imageDisplay.src = img.src;
+					imageDisplay.alt = img.alt;
+					imageDisplay.dataset.counter = img.dataset.counter;
+
+					imageInfo.innerHTML = '<h3>' + img.alt + '</h3>';
+					imageInfo.innerHTML += decodeURI(img.src.split("/").pop());
+					imageInfo.innerHTML += '<br />' + tmpImg.height + '&times;' + tmpImg.width + 'px';
+
+					overlay.style.display = "block";
+				});
+			}
+
+			imageDisplay.addEventListener('click', function (e) {
+				e.stopPropagation(); // !
+
+				overlay.style.display = "none";
+
+				img_counter = parseInt(e.target.dataset.counter) + 1;
+				try {
+					link = document.body.querySelector('img[data-counter="' + img_counter + '"]').parentNode;
+				} catch (e) {
+					try {
+						link = document.body.querySelector('img[data-counter="0"]').parentNode;
+					} catch (e) {
+						return false;
+					}
+				}
+				doClick(link);
+			});
+
+			overlay.addEventListener('click', function (e) {
+				overlay.style.display = "none";
+			})
+
+			function keyPressed(e) {
+				e = e || window.event;
+				var charCode = e.keyCode || e.which;
+				switch (charCode) {
+					case 27: // Esc
+						overlay.style.display = "none";
+						break;
+					case 34: // right-arrow, Page Down, keypad right, ...
+					case 39:
+					case 54:
+					case 102:
+						e.preventDefault();
+						doClick(imageDisplay);
+						break;
+					case 33: // left-arrow, Page Up, keypad right, ...
+					case 37:
+					case 52:
+					case 100:
+						e.preventDefault();
+						document.getElementById('imageDisplay').dataset.counter -= 2; // hacky
+						doClick(imageDisplay);
+						break;
+				}
+			};
+			document.body.addEventListener('keydown', keyPressed);
+		</script>
+	</body>
+</html>
